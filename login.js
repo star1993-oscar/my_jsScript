@@ -1,40 +1,16 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const jwt = require('jsonwebtoken');
-require('dotenv').config();
-// Get the client
-const mysql = require('mysql2');
+
+const DBPool = require('./db');
 
 // Initialize express app
+require('dotenv').config();
 const app = express();
 const port = 3000;
 
 // Use body-parser middleware to parse JSON requests
 app.use(bodyParser.json());
-
-// Create the connection to database
-const connection = mysql.createConnection({
-        host: 'localhost',
-        user: 'root',
-        database: 'mywork_db',
-});
-
-// console.log("!!!!!!!!!!!!!!!");
-
-// Connect to the database
-connection.connect((err) => {
-    if (err) {
-        console.error('Error connecting to the database:', err);
-        return;
-    }
-    console.log('Connected to the database.');
-});
-// Predefined users list
-// const users = [
-//     { username: 'star', password: 'qwe', account: 'admin' },
-//     { username: 'olaf', password: 'asd', account: 'user' },
-//     { username: 'moon', password: 'zxc', account: 'user' }
-// ];
 
 // Secret key for JWT
 const SECRET_KEY = process.env.SECRET_KEY;
@@ -76,53 +52,88 @@ const verificationAdmin = (req, res, next) => {
 };
 
 // Login endpoint
-app.post('/login', (req, res) => {
+app.post('/login', async (req, res) => {
     const { username, password } = req.body;
 
-    // Find user with matching username and password
-    const user = users.find(u => u.username === username && u.password === password);
+    let connection;
+    try {
+        connection = await DBPool.getConnection();
 
-    if (user) {
-        // Generate JWT with account type
-        const token = jwt.sign({ id: user.username, account: user.account }, SECRET_KEY, {
-            expiresIn: 86400 // expires in 24 hours
-        });
-        res.status(200).json({ message: 'Login successful!', token: token });
-    } else {
-        res.status(401).json({ message: 'Invalid username or password' });
+        const [results] = await connection.query(
+            'SELECT * FROM `users` WHERE `username` = ? AND `password` = ?',
+            [username, password]
+        );
+
+        if (results.length > 0) {
+            const user = results[0];
+            // Generate JWT with account type
+            const token = jwt.sign({ id: user.username, account: user.account }, SECRET_KEY, {
+                expiresIn: 86400 // expires in 24 hours
+            });
+            res.status(200).json({ message: 'Login successful!', token: token });
+        } else {
+            res.status(401).json({ message: 'Invalid username or password' });
+        }
+    } catch (err) {
+        console.error('Database query error:', err);
+        res.status(500).json({ message: 'Internal server error' });
+    } finally {
+        if (connection) connection.release();
     }
 });
-
 // Protected route example
 app.get('/protected', verifyToken, (req, res) => {
     res.status(200).json({ message: 'This is a protected route', user: req.user.id });
 });
 
-// Route that requires user role
-app.get('/test/:id', verifyToken, verificationUser, (req, res, next) => {
-    const { id } = req.params;
-    if (id == '1') {
-        res.send('This is first page!');
-        return;
+app.get('/posts', async (req, res) => {
+    
+    let connection;
+    try {
+        connection = await DBPool.getConnection();
+        const [results] = await connection.query('SELECT * FROM `posts_todo`');
+        // console.log(results[0]);
+        if (results.length > 0) {
+            res.status(200).json(results);
+        } else {
+            res.status(404).json({ message: 'Post not found' });
+        }
+    } catch (err) {
+        console.error('Database query error:', err);
+        res.status(500).json({ message: 'Internal server error' });
+    } finally {
+        if (connection) connection.release();
     }
-    next();
-}, (req, res) => {
-    console.log('[asdfasdf3]');
-    res.send('everything is ok');
+});
+
+// Route that requires user role  //verifyToken, verificationUser, 
+app.get('/posts/:id', async (req, res) => {
+    const { id } = req.params;
+
+    let connection;
+    try {
+        connection = await DBPool.getConnection();
+        const [results] = await connection.query('SELECT * FROM `posts_todo` WHERE `id` = ?', [id]);
+        // console.log(results[0]);
+        if (results.length > 0) {
+            res.status(200).json(results[id-1]);
+        } else {
+            res.status(404).json({ message: 'Post not found' });
+        }
+    } catch (err) {
+        console.error('Database query error:', err);
+        res.status(500).json({ message: 'Internal server error' });
+    } finally {
+        if (connection) connection.release();
+    }
 });
 
 // Route that requires admin role
-app.get('/privacy', verifyToken, verificationUser, verificationAdmin, (req, res, next) => {
-    const { id } = req.params;
-    if (id == '1') {
-        res.send('this is test');
-        return;
-    }
-    console.log('[asdfasdf2]');
-    next();
+app.get('/privacy', verifyToken, verificationUser, verificationAdmin, (req, res) => {
+    res.send('This is a privacy page for admins');
 });
 
 // Start the server
 app.listen(port, () => {
     console.log(`Server running on http://localhost:${port}`);
-}); 
+});

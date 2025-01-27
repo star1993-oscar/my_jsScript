@@ -11,8 +11,8 @@
   "version": "1.0.0",
   "main": "1.js",
   "scripts": {
-    "start": "node index.js",
-    "dev": "nodemon index.js"
+    "start": "node login.js",
+    "dev": "nodemon login.js"
   },
   "author": "",
   "license": "ISC",
