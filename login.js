@@ -21,14 +21,14 @@ const connection = mysql.createConnection({
 
 // console.log("!!!!!!!!!!!!!!!");
 
-connection.query(
-    'SELECT * FROM `users` WHERE `username` = "moon"',
-    function (err, results, fields) {
-        console.log(results); // results contains rows returned by server
-        console.log(fields); // fields contains extra meta data about results, if available
+// Connect to the database
+connection.connect((err) => {
+    if (err) {
+        console.error('Error connecting to the database:', err);
+        return;
     }
-);
-
+    console.log('Connected to the database.');
+});
 // Predefined users list
 // const users = [
 //     { username: 'star', password: 'qwe', account: 'admin' },
