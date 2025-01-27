@@ -2,6 +2,8 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const jwt = require('jsonwebtoken');
 require('dotenv').config();
+// Get the client
+const mysql = require('mysql2');
 
 // Initialize express app
 const app = express();
@@ -10,12 +12,29 @@ const port = 3000;
 // Use body-parser middleware to parse JSON requests
 app.use(bodyParser.json());
 
+// Create the connection to database
+const connection = mysql.createConnection({
+        host: 'localhost',
+        user: 'root',
+        database: 'mywork_db',
+});
+
+// console.log("!!!!!!!!!!!!!!!");
+
+connection.query(
+    'SELECT * FROM `users` WHERE `username` = "moon"',
+    function (err, results, fields) {
+        console.log(results); // results contains rows returned by server
+        console.log(fields); // fields contains extra meta data about results, if available
+    }
+);
+
 // Predefined users list
-const users = [
-    { username: 'star', password: 'qwe', account: 'admin' },
-    { username: 'olaf', password: 'asd', account: 'user' },
-    { username: 'moon', password: 'zxc', account: 'user' }
-];
+// const users = [
+//     { username: 'star', password: 'qwe', account: 'admin' },
+//     { username: 'olaf', password: 'asd', account: 'user' },
+//     { username: 'moon', password: 'zxc', account: 'user' }
+// ];
 
 // Secret key for JWT
 const SECRET_KEY = process.env.SECRET_KEY;
@@ -106,4 +125,4 @@ app.get('/privacy', verifyToken, verificationUser, verificationAdmin, (req, res,
 // Start the server
 app.listen(port, () => {
     console.log(`Server running on http://localhost:${port}`);
-});
+}); 
