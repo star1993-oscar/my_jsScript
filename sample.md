@@ -42,3 +42,54 @@ module.exports = pool;
     } finally {
       if (connection) connection.release();
     }
+
+
+
+server {
+    server_name vertextcloudsystems.website;
+
+
+    # Main site
+    root /var/www/html;
+    index index.html index.htm index.php;
+
+    # Serve the main website
+    location / {
+        try_files $uri $uri/ /404.html;
+    }
+
+
+    location /phpmyadmin {
+       alias /usr/share/phpmyadmin;
+       index index.php;
+
+       location ~ \.php$ {
+           include snippets/fastcgi-php.conf;
+           fastcgi_pass unix:/var/run/php/php8.3-fpm.sock;
+           fastcgi_param SCRIPT_FILENAME $request_filename;
+           include fastcgi_params;
+       }
+
+       location ~ /\.ht {
+            deny all;
+       }
+    }
+
+
+    # Route for Node.js API
+    location /api {
+        proxy_pass http://localhost:3030; # Forward to your Node.js app
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+    }
+
+    # Security: Deny access to hidden files
+    location ~ /\. {
+        deny all;
+    }
+
+    listen 443; # managed by Certbot 
+}
